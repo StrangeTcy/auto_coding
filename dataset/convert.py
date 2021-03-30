@@ -24,6 +24,7 @@ if __name__ == '__main__':
     gpt2_tok = GPT2Tokenizer.from_pretrained("gpt2", do_lower_case=False)
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # gpt2_tok.to(device)
+    print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
     paths = ['Python', 'Java', 'Javascript']
     # paths = ['Python', 'Java']
     segments = {}
@@ -67,9 +68,8 @@ if __name__ == '__main__':
                         print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
                     
                     if FOR_REAL:
-                        print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
                         encoded = gpt2_tok.encode(code_content)
-                        for i in trange(len(encoded) // args.stride):
+                        for i in range(len(encoded) // args.stride):
                             seg = encoded[i * args.stride:i * args.stride + args.segment_len]
                             if path not in segments:
                                 segments[path] = []
@@ -92,9 +92,9 @@ if __name__ == '__main__':
                                 print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
                             
                             if FOR_REAL:
-                                print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
+                                
                                 encoded = gpt2_tok.encode(code_content)
-                                for i in trange(len(encoded) // args.stride):
+                                for i in range(len(encoded) // args.stride):
                                     seg = encoded[i * args.stride:i * args.stride + args.segment_len]
                                     if path not in segments:
                                         segments[path] = []
