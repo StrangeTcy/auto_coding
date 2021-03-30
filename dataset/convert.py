@@ -115,7 +115,17 @@ if __name__ == '__main__':
         os.makedirs(to_path)
 
     with open(os.path.join(to_path, "train.jsonl"), "w") as f:
+        print ("Saving train.jsonl")
         f.write("\n".join(train))
 
     with open(os.path.join(to_path, "dev.jsonl"), "w") as f:
+        print ("Saving dev.jsonl")
         f.write("\n".join(dev))
+
+    # check file sizes
+    train_fs = Path(os.path.join(to_path, "train.jsonl")).stat().st_size    
+    dev_fs = Path(os.path.join(to_path, "dev.jsonl")).stat().st_size    
+
+    print (f"We have train.jsonl of size {train_fs} and dev.jsonl of size {dev_fs}")
+    if train_fs == 0 or dev_fs == 0:
+        print ("Some file has 0 size. Probably something went wrong...")
