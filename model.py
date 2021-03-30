@@ -15,16 +15,20 @@ logger = logging.getLogger(__name__)
 
 class GPTSingleHead(nn.Module):
     """
-    Different from directly using GPT2LMHeadModel, this wraps up GPT2LMHeadModel as well as GPT2Tokenizer
+    Different from directly using GPT2LMHeadModel, 
+    this wraps up GPT2LMHeadModel as well as GPT2Tokenizer
     """
-    def __init__(self, model_name_or_path: str, max_seq_length: int = 256, do_lower_case: bool = False,
-                 special_words_to_add=None):
+    def __init__(self, model_name_or_path: str, 
+                max_seq_length: int = 256, 
+                do_lower_case: bool = False,
+                special_words_to_add=None):
         super(GPTSingleHead, self).__init__()
         self.config_keys = ['max_seq_length', 'do_lower_case']
         self.do_lower_case = do_lower_case
         if max_seq_length > 1024:
             logging.warning(
-                "GPT only allows a max_seq_length of 1024. Value will be set to 1024")
+                "GPT only allows a max_seq_length of 1024. \
+                Value will be set to 1024")
             max_seq_length = 1024
         self.max_seq_length = max_seq_length
         self.gpt = GPT2LMHeadModel.from_pretrained(model_name_or_path)
@@ -98,7 +102,7 @@ class GPTSingleHead(nn.Module):
     @staticmethod
     def load(input_path: str):
         if not os.path.isfile(os.path.join(input_path, 'gpt_sh_config.json')):
-            raise ValueError("In the model path does not find gpt_sh_config.json file, you may have not trained yet")
+            raise ValueError("No file  gpt_sh_config.json found in the model path; you may have not trained yet")
         with open(os.path.join(input_path, 'gpt_sh_config.json')) as f:
             config = json.load(f)
         return GPTSingleHead(model_name_or_path=input_path, **config)

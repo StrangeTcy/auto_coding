@@ -40,7 +40,7 @@ try:
     wandb.ensure_configured()
     if wandb.api.api_key is None:
         _has_wandb = False
-        wandb.termwarn("W&B installed but not logged in.  Run `wandb login` or set the WANDB_API_KEY env variable.")
+        wandb.termwarn("W&B is installed but you haven't logged in.  \nRun `wandb login` or set the WANDB_API_KEY env variable.")
     else:
         _has_wandb = False if os.getenv("WANDB_DISABLED") else True
 except ImportError:
@@ -48,7 +48,7 @@ except ImportError:
 
 
 def set_seed(seed, n_gpu):
-    logger.info(f"   see seed for random, numpy and torch {seed}")
+    logger.info(f"   setting seed for random, numpy and torch {seed}")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -124,10 +124,14 @@ class CollateFunction():
 
 
 class ModelTrainer():
-    def __init__(self, up_model: nn.Module, down_layer: nn.Module = None, train_dataset=None,
-                 dev_dataset=None, dev_evaluator=None,
+    def __init__(self, 
+                 up_model: nn.Module, 
+                 down_layer: nn.Module = None, 
+                 train_dataset=None,
+                 dev_dataset=None, 
+                 dev_evaluator=None,
                  epochs: int = 1,
-                 visiable_device: str = "0",
+                 visible_devices: str = "0",
                  scheduler: str = 'warmuplinear',
                  warmup_ratio: float = 0.1,
                  optimizer_class: Type[Optimizer] = transformers.AdamW,
@@ -153,8 +157,10 @@ class ModelTrainer():
                  local_rank: int = -1,
                  wandb_config=None):
         """
-        this trainer is written for training a sequential model that contains an upstream_layer (usually transformers)
-        and a downstream_layer (usually task-specific heads like FF, RNN, CNN for encoding the output of upstram_layer)
+        this trainer is written for training a sequential model 
+        that contains an upstream_layer (usually transformers)
+        and a downstream_layer 
+        (usually task-specific heads like FF, RNN, CNN for encoding the output of upstream_layer)
 
         :param up_model: transformers like transformers.GPT2LMHeadModel or transformers.BERTModel
         :param down_layer: None if up_model already wraps up with an output encoder such as LMHead in GPT2LMHeadModel, else nn.Module for encoding the output of up_model
@@ -162,7 +168,7 @@ class ModelTrainer():
         :param dev_dataset: dev_dataset, it can be either instance of torch.data.Dataset or IterableDataset
         :param dev_evaluator: dev_evaluator, evaluator on dev_dataset for early stop and performance tracking during training (defined in evaluate.py)
         :param epochs: number of epoches for training
-        :param visiable_device: devices chosen to perform training
+        :param visible_devices: devices chosen to perform training
         :param scheduler: scheduler specially from transformers: see options in self._get_scheduler
         :param warmup_ratio: warmup_ratio ratio for learning rate over total training steps
         :param optimizer_class: transformers.AdamW de byfault
@@ -190,12 +196,14 @@ class ModelTrainer():
 
         self.up_model = up_model
         if down_layer == None:
-            # In this example, the upstream_layer already integrate the downstream head (namely, simple LM head as in transformers.GPT2LMHeadModel)
+            # In this example, the upstream_layer already integrates
+            # the downstream head (namely, simple LM head as in transformers.GPT2LMHeadModel)
             # EmptyHeads is created here only for placeholder purpose
             down_layer = EmptyHeads()
 
         self.down_layer = down_layer
         assert output_path != None
+        # TODO:Why /tmp ? Shouldn't this be pwd or some other customisable place?
         output_path = os.path.join("tmp", output_path)
         # os.makedirs(output_path,exist_ok=True)
         if restore_training:
@@ -233,7 +241,7 @@ class ModelTrainer():
         os.makedirs(output_path, exist_ok=True)
         if os.listdir(output_path) and not restore_training:
             out = input(
-                "Output directory ({}) already exists and is not empty, you wanna remove it before start? (y/n)".format(
+                "Output directory ({}) already exists and is not empty, you wanna remove it before starting? (y/n)".format(
                     output_path))
             if out == "y":
                 shutil.rmtree(output_path)
@@ -265,7 +273,7 @@ class ModelTrainer():
             raise ValueError("set device to be None, cuda or cpu")
         assert n_gpu <= torch.cuda.device_count()
 
-        logger.info("Use pytorch device: {}, with gpu_number={}".format(device, n_gpu))
+        logger.info("Using pytorch device: {}, with gpu_number={}".format(device, n_gpu))
 
         self._train_batch_size = per_gpu_train_batch_size * max(1, n_gpu)
         self._dev_batch_size = dev_batch_size if dev_batch_size != -1 else self._train_batch_size
@@ -299,7 +307,8 @@ class ModelTrainer():
         set_seed(seed, n_gpu)
 
         if n_gpu > 1:
-            self.model = torch.nn.DataParallel(self.model, device_ids=[int(i) for i in visiable_device.split(',')])
+            self.model = torch.nn.DataParallel(self.model, 
+                                               device_ids=[int(i) for i in visible_devices.split(',')])
             self.model = self.model.to(f'cuda:{self.model.device_ids[0]}')
 
         elif n_gpu == 1:
@@ -318,9 +327,14 @@ class ModelTrainer():
 
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
         optimizer_grouped_parameters = [
-            {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-             'weight_decay': weight_decay},
-            {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            {
+            'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
+             'weight_decay': weight_decay
+             },
+            {
+            'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 
+            'weight_decay': 0.0
+            }
         ]
         if local_rank != -1:
             self._total_train_steps = self._total_train_steps // torch.distributed.get_world_size()

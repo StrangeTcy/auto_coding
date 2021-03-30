@@ -2,6 +2,28 @@ import glob, json, os, argparse
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from transformers import GPT2Tokenizer
+from pathlib import Path
+
+
+# these methods should help with utf-8 decoding/encoding of our source code files
+# Just print out normalized text
+
+# from charset_normalizer import CharsetNormalizerMatches as CnM
+# print(CnM.from_path('./my_subtitle.srt').best().first())
+from charset_normalizer import CharsetNormalizerMatches as CnM
+
+
+# Normalize any text file
+
+# from charset_normalizer import CharsetNormalizerMatches as CnM
+# try:
+#     CnM.normalize('./my_subtitle.srt') # should write to disk my_subtitle-***.srt
+# except IOError as e:
+#     print('Sadly, we are unable to perform charset normalization.', str(e))
+
+
+# check dataset without tokenization
+FOR_REAL = False
 
 if __name__ == '__main__':
 
@@ -16,20 +38,101 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     gpt2_tok = GPT2Tokenizer.from_pretrained("gpt2", do_lower_case=False)
-    paths = ['Python', 'Java']
+    paths = ['Python', 'Java', 'Javascript']
+    # paths = ['Python', 'Java']
     segments = {}
 
+    def magic_path_filter(path):
+        print ("We've received path {}".format(path))
+        if path == "Python":
+            # ret_str = glob.glob(f'{path}/**/*.py', recursive=True)
+            ret_str = Path(path).rglob('*.py')
+            return ret_str
+        elif path == "Javascript":
+            # ret_str = glob.glob(f'{path}/**/*.js', recursive=True)
+            # ret_str = glob.glob(f'{path}/**/**/*.js', recursive=True)
+            ret_str = Path(path).rglob('*.js')
+            print ("Returning {}".format(ret_str))
+            return ret_str
+        else:
+            # ret_str = glob.glob(f'{path}/**/*.java', recursive=True)
+            ret_str = Path(path).rglob('*.java')
+            return ret_str
+
+
     for path in paths:
-        source_files = glob.glob(f'{path}/**/*.py' if path == "Python" else f'{path}/**/*.java', recursive=True)
+        # source_files = glob.glob(magic_path_filter(path), recursive=True)
+        source_files = magic_path_filter(path)
+        # source_files = glob.glob(f'{path}/**/*.py' if path == "Python" else f'{path}/**/*.java', recursive=True)
+        print ("Working with source_files {}".format(source_files))
         for each_src in tqdm(source_files):
-            with open(each_src, "r", encoding="utf-8") as f:
-                code_content = f.read()
-                encoded = gpt2_tok.encode(code_content)
-                for i in range(len(encoded) // args.stride):
-                    seg = encoded[i * args.stride:i * args.stride + args.segment_len]
-                    if path not in segments:
-                        segments[path] = []
-                    segments[path].append(json.dumps({"token_ids": seg, "label": path}))
+            if os.path.isfile(each_src):
+                
+                # with open(each_src, "r", encoding="utf-8") as f:
+                with open(each_src, "rb") as f:
+                    print ("\nReading {}".format(each_src))
+                    try:
+                        code_content = f.read().decode('utf-8')
+                    except UnicodeDecodeError as e:
+                        # input ("Hey there!")
+                        print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
+                        norm_f = str(CnM.from_path(each_src, explain=True).best().first())
+                        print(norm_f)
+                        # input ("Better?")
+                        try:
+                            with open(each_src, "w", encoding="utf-8") as f:
+                                f.write(norm_f)
+                            # CnM.normalize(each_src) # should write to disk my_subtitle-***.srt
+                        except IOError as e:
+                            print('Sadly, we are unable to perform charset normalization.', str(e))
+                        # input (f"Could you open {each_src} to check?")    
+                    # print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
+                    if FOR_REAL:
+                        encoded = gpt2_tok.encode(code_content)
+                        for i in range(len(encoded) // args.stride):
+                            seg = encoded[i * args.stride:i * args.stride + args.segment_len]
+                            if path not in segments:
+                                segments[path] = []
+                            segments[path].append(json.dumps({"token_ids": seg, "label": path}))
+                # except UnicodeDecodeError as e:
+                #     print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
+                #     with open(each_src, "rb") as f:
+                #         print ("\nReading {}".format(each_src))
+                #         code_content = f.read()
+                #     with open(each_src, "w", encoding="utf-8") as f:
+                #         input ("Hey there!")
+                #         print ("\nSaving to {}".format(each_src))
+                #         f.write(code_content)    
+
+
+
+            if os.path.isdir(each_src):
+                print ("Turns out {} is a directory. Processing...".format(each_src))
+                subdir = Path(each_src).rglob('*.js')
+
+                for each_sub_src in tqdm(subdir):
+                    if os.path.isfile(each_sub_src):
+                        # with open(each_sub_src, "r", encoding="utf-8") as f:
+                        with open(each_sub_src, "rb") as f:
+                            print ("\nReading {}".format(each_sub_src))
+                            try:
+                                code_content = f.read().decode('utf-8')
+                            except UnicodeDecodeError as e:
+                                input ("Hey there!")
+                                print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
+                            
+                            # code_content = f.read()
+                            if FOR_REAL:
+                                # print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
+                                encoded = gpt2_tok.encode(code_content)
+                                for i in range(len(encoded) // args.stride):
+                                    seg = encoded[i * args.stride:i * args.stride + args.segment_len]
+                                    if path not in segments:
+                                        segments[path] = []
+                                    segments[path].append(json.dumps({"token_ids": seg, "label": path}))
+                    else:
+                        print ("Still a directory. Go deeper?")                 
+
 
     train, dev = [], []
     for key in segments:

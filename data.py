@@ -8,7 +8,8 @@ from tqdm import tqdm
 class SrcCodeDataset(Dataset):
     def __init__(self, file_path, model, cache_path=None):
         """
-        this dataset class is used to load source code dataset in batch for fine-tuning with GPT2LMModel
+        this dataset class is used to load source code dataset in batches 
+        for fine-tuning with GPT2LMModel
         :param model: the model that the dataset will be fed to
         """
         self.inputs = []
@@ -60,4 +61,13 @@ class SrcCodeDataset(Dataset):
                     encoded_plus = model.tokenizer.encode_plus(
                         model.tokenize("<java>") + example["token_ids"] + [model.eos_token_id],
                         max_length=model.max_seq_length)
+                elif example["label"].lower() == "javascript":
+                    encoded_plus = model.tokenizer.encode_plus(
+                        model.tokenize("<javascript>") + example["token_ids"] + [model.eos_token_id],
+                        max_length=model.max_seq_length)
+                # This might be unneccessary
+                elif example["label"].lower() == "snippet":
+                    encoded_plus = model.tokenizer.encode_plus(
+                        model.tokenize("<snippet>") + example["token_ids"] + [model.eos_token_id],
+                        max_length=model.max_seq_length)    
                 self.inputs.append(encoded_plus.data)

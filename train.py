@@ -8,8 +8,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-medium",
-             "gpt2_large": "gpt2-large"}
+MODEL_MAP = {"distilgpt2": "distilgpt2", 
+            "gpt2": "gpt2", 
+            "gpt2_medium": "gpt2-medium",
+            "gpt2_large": "gpt2-large"}
 
 from model import GPTSingleHead
 from trainer import ModelTrainer
@@ -44,8 +46,8 @@ if __name__ == '__main__':
                         help='accumulation steps if you want large batch size but can not fit in the memory allowed')
     parser.add_argument('--n_gpu', type=int, default=1,
                         help='number of gpu for training')
-    parser.add_argument('--visiable_device', type=str, default="0",
-                        help='visiable gpus for training, should be consistent with n_gpu')
+    parser.add_argument('--visible_devices', type=str, default="0",
+                        help='visible gpus for training, should be consistent with n_gpu')
     parser.add_argument('--evaluation_steps', type=int, default=200,
                         help='evaluation_steps')
     parser.add_argument('--wandb_project_name', type=str, default="code_generate",
@@ -69,8 +71,9 @@ if __name__ == '__main__':
     args.wandb_run_name = output_path
     #initialize model by model name (the same as used in transformers lib)
     model = GPTSingleHead(MODEL_MAP[args.model_select], max_seq_length=args.max_seq_length)
-    #add special tokens for controlling code generation by different programming language
-    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<java>"]})
+    # add special tokens for controlling code generation by different programming language
+    # do we need the <snippet> token?
+    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<java>", "<javascript>", "<snippet>"]})
     #load training dataset
     file_path = dataset_folder + "train.jsonl"
     train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
@@ -95,7 +98,7 @@ if __name__ == '__main__':
                                  restore_training=args.restore_training,
                                  accumulation_steps=args.accumulation_steps,
                                  n_gpu=args.n_gpu,
-                                 visiable_device=args.visiable_device,
+                                 visible_devices=args.visible_devices,
                                  warmup_ratio=args.warmup_ratio,
                                  seed=args.seed,
                                  data_loader_shuffle=True,

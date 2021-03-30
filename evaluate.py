@@ -41,17 +41,17 @@ class SingleCLMEvaluator():
         str, float]:
 
         if do_predict and self.tokenizer == None:
-            raise ValueError("you are doing predict so need a tokenizer")
+            raise ValueError("you are generating predictions and so need a tokenizer")
         if self.dataloader is None:
             raise ValueError(" need to set dataloader for this evaluator, call reset_dataloader()")
 
         model.eval()
         if epoch == -1 and steps == -1:
             logger.info(
-                f"\nEvaluation the model on {self.data_tag} dataset")
+                f"\nEvaluating the model on {self.data_tag} dataset")
         else:
             logger.info(
-                "\nEvaluation the model on " + self.data_tag + " dataset" + f" in epoch {epoch} after {steps} steps:")
+                "\nEvaluating the model on " + self.data_tag + " dataset" + f" in epoch {epoch} after {steps} steps:")
 
         self.dataloader.collate_fn = collate_fn
         total_loss = 0.0
