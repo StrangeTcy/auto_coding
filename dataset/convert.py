@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 # check dataset without tokenization
-FOR_REAL = False
+FOR_REAL = True
 
 if __name__ == '__main__':
 
