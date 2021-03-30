@@ -1,25 +1,9 @@
 import glob, json, os, argparse
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from sklearn.model_selection import train_test_split
 from transformers import GPT2Tokenizer
 from pathlib import Path
 
-
-# these methods should help with utf-8 decoding/encoding of our source code files
-# Just print out normalized text
-
-# from charset_normalizer import CharsetNormalizerMatches as CnM
-# print(CnM.from_path('./my_subtitle.srt').best().first())
-from charset_normalizer import CharsetNormalizerMatches as CnM
-
-
-# Normalize any text file
-
-# from charset_normalizer import CharsetNormalizerMatches as CnM
-# try:
-#     CnM.normalize('./my_subtitle.srt') # should write to disk my_subtitle-***.srt
-# except IOError as e:
-#     print('Sadly, we are unable to perform charset normalization.', str(e))
 
 
 # check dataset without tokenization
@@ -38,12 +22,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     gpt2_tok = GPT2Tokenizer.from_pretrained("gpt2", do_lower_case=False)
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # gpt2_tok.to(device)
     paths = ['Python', 'Java', 'Javascript']
     # paths = ['Python', 'Java']
     segments = {}
 
+
     def magic_path_filter(path):
         print ("We've received path {}".format(path))
+        if not Path(path).exists():
+            print (f"Sorry, we have no folder {Path(path)}")
+
         if path == "Python":
             # ret_str = glob.glob(f'{path}/**/*.py', recursive=True)
             ret_str = Path(path).rglob('*.py')
@@ -74,36 +64,17 @@ if __name__ == '__main__':
                     try:
                         code_content = f.read().decode('utf-8')
                     except UnicodeDecodeError as e:
-                        # input ("Hey there!")
                         print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
-                        norm_f = str(CnM.from_path(each_src, explain=True).best().first())
-                        print(norm_f)
-                        # input ("Better?")
-                        try:
-                            with open(each_src, "w", encoding="utf-8") as f:
-                                f.write(norm_f)
-                            # CnM.normalize(each_src) # should write to disk my_subtitle-***.srt
-                        except IOError as e:
-                            print('Sadly, we are unable to perform charset normalization.', str(e))
-                        # input (f"Could you open {each_src} to check?")    
-                    # print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
+                    
                     if FOR_REAL:
+                        print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
                         encoded = gpt2_tok.encode(code_content)
-                        for i in range(len(encoded) // args.stride):
+                        for i in trange(len(encoded) // args.stride):
                             seg = encoded[i * args.stride:i * args.stride + args.segment_len]
                             if path not in segments:
                                 segments[path] = []
                             segments[path].append(json.dumps({"token_ids": seg, "label": path}))
-                # except UnicodeDecodeError as e:
-                #     print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
-                #     with open(each_src, "rb") as f:
-                #         print ("\nReading {}".format(each_src))
-                #         code_content = f.read()
-                #     with open(each_src, "w", encoding="utf-8") as f:
-                #         input ("Hey there!")
-                #         print ("\nSaving to {}".format(each_src))
-                #         f.write(code_content)    
-
+               
 
 
             if os.path.isdir(each_src):
@@ -118,14 +89,12 @@ if __name__ == '__main__':
                             try:
                                 code_content = f.read().decode('utf-8')
                             except UnicodeDecodeError as e:
-                                input ("Hey there!")
                                 print ("We have error {}. \nTrying to save with utf-8 encoding".format(e))
                             
-                            # code_content = f.read()
                             if FOR_REAL:
-                                # print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
+                                print ("\nEncoding using GPT2Tokenizer {}".format(gpt2_tok))
                                 encoded = gpt2_tok.encode(code_content)
-                                for i in range(len(encoded) // args.stride):
+                                for i in trange(len(encoded) // args.stride):
                                     seg = encoded[i * args.stride:i * args.stride + args.segment_len]
                                     if path not in segments:
                                         segments[path] = []
